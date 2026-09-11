@@ -1,6 +1,10 @@
 package io.savioromario10.msavaliadorcredito.application;
 
 import java.util.List;
+import java.util.UUID;
+import java.util.stream.Collectors;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -10,6 +14,7 @@ import org.springframework.http.HttpStatus;
 import io.savioromario10.msavaliadorcredito.infra.clients.ClienteResourceClient;
 import io.savioromario10.msavaliadorcredito.domain.model.SituacaoCliente;
 import io.savioromario10.msavaliadorcredito.domain.model.DadosCliente;
+import io.savioromario10.msavaliadorcredito.domain.model.DadosSolicitacaoEmissaoCartao;
 import io.savioromario10.msavaliadorcredito.domain.model.RetornoAvaliacaoCliente;
 import io.savioromario10.msavaliadorcredito.infra.clients.CartoesResourceClient;
 import io.savioromario10.msavaliadorcredito.domain.model.CartaoCliente;
@@ -17,6 +22,9 @@ import io.savioromario10.msavaliadorcredito.domain.model.CartaoAprovado;
 import io.savioromario10.msavaliadorcredito.application.ex.DadosClienteNotFoundException;
 import io.savioromario10.msavaliadorcredito.application.ex.ErroComunicacaoMicroserviceException;
 import io.savioromario10.msavaliadorcredito.domain.model.Cartao;
+import io.savioromario10.msavaliadorcredito.infra.mqueue.SolicitacaoEmissaoCartaoPublisher;
+import io.savioromario10.msavaliadorcredito.domain.model.ProtocoloSolicitacaoCartao;
+import io.savioromario10.msavaliadorcredito.application.ex.ErroSolicitacaoCartaoException;
 
 import feign.FeignException;
 
@@ -26,6 +34,7 @@ public class AvaliadorCreditoService {
 
   private final ClienteResourceClient clienteClient;
   private final CartoesResourceClient cartoesClient;
+  private final SolicitacaoEmissaoCartaoPublisher emissaoCartaoPublisher;
 
   public SituacaoCliente obterSituacaoCliente(String cpf)
       throws DadosClienteNotFoundException, ErroComunicacaoMicroserviceException {
@@ -68,13 +77,16 @@ public class AvaliadorCreditoService {
             BigDecimal limiteBasico = cartao.getLimiteBasico();
             BigDecimal idadeBD = BigDecimal.valueOf(dadosCliente.getIdade());
 
-            BigDecimal fator = idadeBD.divide(BigDecimal.valueOf(10));
+            BigDecimal fator = idadeBD.divide(
+                BigDecimal.TEN,
+                2,
+                RoundingMode.HALF_UP);
             BigDecimal limiteAprovado = fator.multiply(limiteBasico);
 
             CartaoAprovado aprovado = new CartaoAprovado();
-            aprovado.setCartao(cartao.getNome());
+            aprovado.setNome(cartao.getNome());
             aprovado.setBandeira(cartao.getBandeira());
-            aprovado.setLimiteAprovado(limiteAprovado);
+            aprovado.setLimiteLiberado(limiteAprovado);
 
             return aprovado;
           }).collect(Collectors.toList());
@@ -88,6 +100,18 @@ public class AvaliadorCreditoService {
         throw new DadosClienteNotFoundException();
       }
       throw new ErroComunicacaoMicroserviceException(e.getMessage(), status);
+    }
+  }
+
+  public ProtocoloSolicitacaoCartao solicitarEmissaoCartao(DadosSolicitacaoEmissaoCartao dados) {
+    try {
+
+      emissaoCartaoPublisher.solicitarCartao(dados);
+      var protocolo = UUID.randomUUID().toString();
+
+      return new ProtocoloSolicitacaoCartao(protocolo);
+    } catch (Exception e) {
+      throw new ErroSolicitacaoCartaoException(e.getMessage());
     }
   }
 }

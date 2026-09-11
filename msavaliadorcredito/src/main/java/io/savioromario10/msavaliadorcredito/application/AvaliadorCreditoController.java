@@ -14,6 +14,9 @@ import io.savioromario10.msavaliadorcredito.domain.model.SituacaoCliente;
 import io.savioromario10.msavaliadorcredito.domain.model.DadosAvaliacao;
 import io.savioromario10.msavaliadorcredito.application.ex.DadosClienteNotFoundException;
 import io.savioromario10.msavaliadorcredito.application.ex.ErroComunicacaoMicroserviceException;
+import io.savioromario10.msavaliadorcredito.domain.model.RetornoAvaliacaoCliente;
+import io.savioromario10.msavaliadorcredito.domain.model.DadosSolicitacaoEmissaoCartao;
+import io.savioromario10.msavaliadorcredito.domain.model.ProtocoloSolicitacaoCartao;
 
 @RestController
 @RequestMapping("avaliacoes-credito")
@@ -54,6 +57,17 @@ public class AvaliadorCreditoController {
       return ResponseEntity.notFound().build();
     } catch (ErroComunicacaoMicroserviceException e) {
       return ResponseEntity.status(e.getStatus()).body(e.getMessage());
+    }
+  }
+
+  @PostMapping("/solicitoes-cartao")
+  public ResponseEntity solicitarEmissaoCartao(@RequestBody DadosSolicitacaoEmissaoCartao dados) {
+    try {
+      ProtocoloSolicitacaoCartao protocoloSolicitacaoCartao = avaliadorCreditoService.solicitarEmissaoCartao(dados);
+
+      return ResponseEntity.ok(protocoloSolicitacaoCartao);
+    } catch (ErroSolicitacaoCartaoException e) {
+      return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
     }
   }
 }

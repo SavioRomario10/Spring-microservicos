@@ -13,6 +13,6 @@ public class DadosCliente {
 
   private Long id;
   private String nome;
-  private Integeer idade;
+  private Integer idade;
 
 }

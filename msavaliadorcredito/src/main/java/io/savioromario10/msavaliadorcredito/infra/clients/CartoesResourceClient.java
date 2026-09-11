@@ -7,10 +7,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
-import io.savioromario10.msavaliadorcredito.application.representation.CartaoCliente;
 import io.savioromario10.msavaliadorcredito.domain.model.Cartao;
+import io.savioromario10.msavaliadorcredito.domain.model.CartaoCliente;
 
-@FeignClient(value = "mscartoes", name = "/cartoes")
+@FeignClient(name = "mscartoes", path = "/cartoes")
 public interface CartoesResourceClient {
 
   @GetMapping(value = "cpf")
